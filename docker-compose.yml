@@ -1,0 +1,13 @@
+services:
+  medical-ai-api:
+    build: .
+    container_name: medical-ai-platform
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DATABASE_URL=sqlite:////app/data/medical_ai.db
+    volumes:
+      - ./data_volume:/app/data
+      - ./gradcam_outputs:/app/gradcam_outputs
+    restart: unless-stopped

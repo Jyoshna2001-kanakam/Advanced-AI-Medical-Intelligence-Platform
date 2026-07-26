@@ -1,0 +1,31 @@
+# --- Web framework / API ---
+fastapi==0.139.2
+uvicorn[standard]==0.51.0
+python-multipart==0.0.32
+
+# --- Database ---
+SQLAlchemy==2.0.51
+# psycopg2-binary==2.9.9   # uncomment for PostgreSQL in production
+
+# --- Deep Learning ---
+torch==2.13.0
+torchvision==0.28.0
+
+# --- Explainable AI / image processing ---
+opencv-python-headless==4.13.0.92
+numpy==2.4.4
+Pillow==12.1.1
+
+# --- LLM integration ---
+anthropic==0.118.0
+
+# --- Config / validation ---
+pydantic==2.13.4
+python-dotenv==1.2.2
+
+# --- PDF report generation (project report / exportable reports) ---
+reportlab==4.4.10
+
+# --- Testing ---
+pytest==9.1.1
+httpx==0.28.1

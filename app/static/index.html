@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Advanced AI Medical Intelligence Platform</title>
+<style>
+  :root {
+    --primary: #1e6091; --primary-dark: #12405e; --accent: #34c3a3;
+    --bg: #f4f7f9; --card: #ffffff; --text: #1f2937; --muted: #6b7280;
+    --danger: #d64550; --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; padding: 28px 24px; }
+  header h1 { margin:0; font-size: 1.5rem; } header p { margin: 4px 0 0; opacity:.85; font-size:.9rem; }
+  main { max-width: 1100px; margin: 24px auto; padding: 0 16px; display:grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 850px){ main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .card h2 { margin-top:0; font-size:1.05rem; color: var(--primary-dark); }
+  .dropzone { border:2px dashed var(--border); border-radius:10px; padding:28px; text-align:center; cursor:pointer; color: var(--muted); }
+  .dropzone:hover { border-color: var(--accent); }
+  button { background: var(--primary); color:#fff; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-size:.9rem; }
+  button:hover { background: var(--primary-dark); }
+  button:disabled { background:#a9b8c2; cursor:not-allowed; }
+  textarea { width:100%; border:1px solid var(--border); border-radius:8px; padding:8px; font-family:inherit; resize:vertical; }
+  img.preview { max-width:100%; border-radius:8px; margin-top:10px; border:1px solid var(--border); }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:.8rem; }
+  .badge.normal { background:#e3f7ee; color:#0f8a5f; }
+  .badge.abnormal { background:#fdecec; color: var(--danger); }
+  .confidence-bar { height:10px; background:#e5e7eb; border-radius:6px; overflow:hidden; margin:6px 0 2px; }
+  .confidence-fill { height:100%; background: var(--accent); }
+  pre.report { white-space:pre-wrap; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px; font-size:.85rem; line-height:1.5; }
+  table { width:100%; border-collapse: collapse; font-size:.85rem; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); }
+  .muted { color: var(--muted); font-size:.8rem; }
+  .disclaimer { margin-top:24px; font-size:.75rem; color: var(--muted); text-align:center; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🩺 Advanced AI Medical Intelligence Platform</h1>
+  <p>Deep Learning Diagnosis &middot; Grad-CAM Explainability &middot; LLM-Assisted Reporting</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Upload Chest X-Ray</h2>
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/png, image/jpeg" style="display:none" />
+      <p>Click to choose an image (PNG/JPEG)</p>
+    </div>
+    <img id="previewImg" class="preview" style="display:none" />
+    <div class="row" style="margin-top:12px;">
+      <button id="analyzeBtn" disabled>Analyze Image</button>
+      <span id="status" class="muted"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Prediction & Explainability</h2>
+    <div id="resultBox">
+      <p class="muted">Results will appear here after analysis.</p>
+    </div>
+  </section>
+
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2>3. AI-Assisted Medical Report</h2>
+    <textarea id="patientNote" rows="2" placeholder="Optional: add clinical context (age, symptoms, history)…"></textarea>
+    <div class="row" style="margin-top:8px;">
+      <button id="reportBtn" disabled>Generate AI Report</button>
+    </div>
+    <div id="reportBox" style="margin-top:12px;"></div>
+  </section>
+
+  <section class="card" style="grid-column: 1 / -1;">
+    <h2>4. Prediction History</h2>
+    <div class="row" style="margin-bottom:10px;">
+      <button id="refreshHistoryBtn">Refresh</button>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>Prediction</th><th>Confidence</th><th>Report?</th><th>Timestamp</th></tr></thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<p class="disclaimer">This platform is a demonstration / educational project. It is not a certified medical
+device and must not be used for real clinical diagnosis without licensed physician review.</p>
+
+<script>
+const API = "/api/v1";
+let selectedFile = null;
+let currentRecordId = null;
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const previewImg = document.getElementById("previewImg");
+const analyzeBtn = document.getElementById("analyzeBtn");
+const statusEl = document.getElementById("status");
+const resultBox = document.getElementById("resultBox");
+const reportBtn = document.getElementById("reportBtn");
+const reportBox = document.getElementById("reportBox");
+const patientNote = document.getElementById("patientNote");
+const historyBody = document.getElementById("historyBody");
+
+dropzone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedFile = file;
+  previewImg.src = URL.createObjectURL(file);
+  previewImg.style.display = "block";
+  analyzeBtn.disabled = false;
+  resultBox.innerHTML = '<p class="muted">Ready to analyze.</p>';
+});
+
+analyzeBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+  analyzeBtn.disabled = true;
+  statusEl.textContent = "Analyzing…";
+  reportBtn.disabled = true;
+  reportBox.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+
+  try {
+    const res = await fetch(`${API}/predict`, { method: "POST", body: formData });
+    if (!res.ok) throw new Error((await res.json()).detail || "Prediction failed");
+    const data = await res.json();
+    currentRecordId = data.id;
+    renderResult(data);
+    reportBtn.disabled = false;
+    loadHistory();
+  } catch (err) {
+    resultBox.innerHTML = `<p style="color:#d64550;">${err.message}</p>`;
+  } finally {
+    analyzeBtn.disabled = false;
+    statusEl.textContent = "";
+  }
+});
+
+function renderResult(data) {
+  const isNormal = data.predicted_class.toUpperCase() === "NORMAL";
+  const pct = (data.confidence * 100).toFixed(1);
+  const probsHtml = Object.entries(data.class_probabilities)
+    .map(([k, v]) => `<div>${k}: ${(v*100).toFixed(1)}%</div>`).join("");
+
+  resultBox.innerHTML = `
+    <span class="badge ${isNormal ? 'normal' : 'abnormal'}">${data.predicted_class}</span>
+    <div class="confidence-bar"><div class="confidence-fill" style="width:${pct}%"></div></div>
+    <p class="muted">Confidence: ${pct}%</p>
+    <div class="muted">${probsHtml}</div>
+    <p style="margin-top:10px; font-weight:600;">Grad-CAM Explanation</p>
+    <img class="preview" src="${data.gradcam_url}" alt="Grad-CAM heatmap" />
+  `;
+}
+
+reportBtn.addEventListener("click", async () => {
+  if (!currentRecordId) return;
+  reportBtn.disabled = true;
+  reportBox.innerHTML = '<p class="muted">Generating report…</p>';
+  try {
+    const res = await fetch(`${API}/predict/${currentRecordId}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patient_note: patientNote.value || null }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || "Report generation failed");
+    const data = await res.json();
+    reportBox.innerHTML = `<pre class="report">${data.llm_report}</pre>`;
+    loadHistory();
+  } catch (err) {
+    reportBox.innerHTML = `<p style="color:#d64550;">${err.message}</p>`;
+  } finally {
+    reportBtn.disabled = false;
+  }
+});
+
+async function loadHistory() {
+  try {
+    const res = await fetch(`${API}/history?limit=25`);
+    const items = await res.json();
+    historyBody.innerHTML = items.map(item => `
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.predicted_class}</td>
+        <td>${(item.confidence*100).toFixed(1)}%</td>
+        <td>${item.llm_report ? "✅" : "—"}</td>
+        <td>${new Date(item.created_at).toLocaleString()}</td>
+      </tr>`).join("");
+  } catch (e) { /* ignore */ }
+}
+
+document.getElementById("refreshHistoryBtn").addEventListener("click", loadHistory);
+loadHistory();
+</script>
+</body>
+</html>
